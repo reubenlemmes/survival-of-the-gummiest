@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survival of the Gummiest — a natural selection simulation</title>
+<style>
+  :root{
+    --paper: #efe7d8;
+    --paper-dark: #e5dcc8;
+    --ink: #232a22;
+    --ink-soft: #4b5245;
+    --moss: #43593f;
+    --moss-dark: #2f3f2c;
+    --rust: #b0492d;
+    --rule: #c9bfa0;
+    --card-line: #b9ae8c;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    margin:0;
+    padding:0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  .page{
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 28px 80px;
+    position: relative;
+  }
+
+  .page::before{
+    content:"";
+    position: absolute;
+    left: 6px;
+    top: 60px;
+    bottom: 60px;
+    width: 10px;
+    background-image: radial-gradient(circle, var(--paper-dark) 3px, transparent 3.2px);
+    background-size: 10px 42px;
+    background-repeat: repeat-y;
+    opacity: 0.9;
+    display: none;
+  }
+  @media (min-width: 720px){
+    .page::before{ display:block; }
+    .page{ padding-left: 40px; }
+  }
+
+  header.masthead{
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 18px;
+    margin-bottom: 32px;
+  }
+  h1{
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+    font-weight: 600;
+    font-size: clamp(2rem, 5vw, 2.9rem);
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+  }
+  .subtitle{
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    line-height: 1.5;
+    margin: 0;
+  }
+  .origin-note{
+    margin-top: 14px;
+    font-size: 0.92rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    line-height: 1.5;
+  }
+  .part-nav{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+  }
+  .part-nav-label{ font-size: 0.82rem; color: var(--ink-soft); }
+  .part-nav a{
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--moss-dark);
+    text-decoration: none;
+    border: 1.5px solid var(--moss);
+    border-radius: 3px;
+    padding: 5px 12px;
+  }
+  .part-nav a:hover{ background: rgba(67,89,63,0.1); }
+
+  h2{
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+    font-weight: 600;
+    font-size: 1.3rem;
+    margin: 0 0 6px;
+  }
+  .hint{
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    margin: 0 0 14px;
+    line-height: 1.5;
+  }
+
+  section{ margin-bottom: 40px; }
+
+  .part-heading{
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+    font-weight: 600;
+    font-size: 1.7rem;
+    margin: 56px 0 6px;
+    padding-top: 22px;
+    border-top: 2px solid var(--ink);
+  }
+  .part-heading.first{ margin-top: 0; padding-top: 0; border-top: none; }
+  .part-intro{
+    color: var(--ink-soft);
+    max-width: 66ch;
+    line-height: 1.55;
+    margin: 0 0 26px;
+  }
+
+  /* ---------- setup ---------- */
+  .setup-block{ margin-bottom: 28px; }
+
+  .habitat-grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .habitat-btn{
+    border: 1.5px solid var(--card-line);
+    background: rgba(255,255,255,0.35);
+    border-radius: 3px;
+    padding: 10px;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+  }
+  .habitat-btn:hover{ border-color: var(--moss); }
+  .habitat-btn:focus-visible{ outline: 3px solid var(--moss); outline-offset: 2px; }
+  .habitat-btn.selected{
+    border: 3px solid var(--rust);
+    background: rgba(176,73,45,0.14);
+    box-shadow: 0 2px 8px rgba(176,73,45,0.25);
+    padding: 8.5px;
+  }
+  .habitat-btn.selected::after{
+    content: "✓ Selected";
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--rust);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    line-height: 1.4;
+  }
+  .habitat-swatch, .habitat-name, .habitat-desc{ pointer-events: none; }
+  .habitat-swatch{
+    height: 42px;
+    border-radius: 2px;
+    border: 1px solid rgba(0,0,0,0.15);
+  }
+  .habitat-name{ font-weight: 600; font-size: 0.92rem; color: var(--ink); }
+  .habitat-desc{ font-size: 0.78rem; color: var(--ink-soft); line-height: 1.3; }
+
+  .env-preview{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 1.5px solid var(--card-line);
+    background: rgba(255,255,255,0.35);
+    border-radius: 3px;
+    padding: 12px;
+    margin-bottom: 24px;
+  }
+  .env-preview .habitat-swatch{ width: 90px; height: 56px; flex-shrink: 0; }
+
+  textarea{
+    width: 100%;
+    min-height: 84px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 0.98rem;
+    padding: 12px 14px;
+    border: 1.5px solid var(--card-line);
+    border-radius: 3px;
+    background:
+      repeating-linear-gradient(var(--paper) 0px, var(--paper) 27px, var(--rule) 28px);
+    line-height: 28px;
+    resize: vertical;
+    color: var(--ink);
+  }
+  textarea:focus-visible{ outline: 3px solid var(--moss); outline-offset: 1px; }
+
+  button.primary-btn{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    background: var(--moss);
+    color: var(--paper);
+    border: none;
+    padding: 13px 26px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  button.primary-btn:hover:not(:disabled){ background: var(--moss-dark); }
+  button.primary-btn:active:not(:disabled){ transform: translateY(1px); }
+  button.primary-btn:disabled{ background: #a9a08a; cursor: not-allowed; }
+  button.primary-btn:focus-visible{ outline: 3px solid var(--rust); outline-offset: 2px; }
+
+  button.ghost-btn{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 600;
+    font-size: 0.92rem;
+    background: transparent;
+    color: var(--moss-dark);
+    border: 1.5px solid var(--moss);
+    padding: 10px 20px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  button.ghost-btn:hover{ background: rgba(67,89,63,0.08); }
+
+  /* ---------- stage ---------- */
+  .hud{
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    border: 1.5px solid var(--ink);
+    border-bottom: none;
+    padding: 10px 16px;
+    background: var(--paper-dark);
+  }
+  .hud-item{ display:flex; flex-direction: column; min-width: 92px; }
+  .hud-label{ font-size: 0.72rem; text-transform: lowercase; color: var(--ink-soft); }
+  .hud-value{ font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-weight: 700; font-size: 1.05rem; }
+  .timer-track{
+    flex: 1;
+    height: 10px;
+    background: rgba(0,0,0,0.12);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .timer-fill{
+    height: 100%;
+    width: 100%;
+    background: var(--rust);
+    transform-origin: left;
+  }
+
+  .habitat-stage{
+    position: relative;
+    height: 420px;
+    border: 1.5px solid var(--ink);
+    overflow: hidden;
+    cursor: default;
+  }
+  .habitat-stage.round-active{ cursor: crosshair; }
+
+  .stage-overlay-btn{
+    position: absolute;
+    z-index: 5;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 14px 28px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .stage-overlay-btn:hover{ background: #000; }
+
+  .bear-btn{
+    position: absolute;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transform: translate(-50%,-50%);
+    line-height: 0;
+  }
+  .bear-btn:focus-visible{ outline: 2px solid var(--moss-dark); outline-offset: 2px; border-radius: 4px; }
+  .bear-btn.caught{
+    animation: catch-pop 0.28s ease forwards;
+    pointer-events: none;
+  }
+  @keyframes catch-pop{
+    0%{ transform: translate(-50%,-50%) scale(1); opacity: 1; }
+    100%{ transform: translate(-50%,-50%) scale(0.2); opacity: 0; }
+  }
+  .bear-btn.entering{ animation: scatter-in 0.35s ease backwards; }
+  @keyframes scatter-in{
+    from{ transform: translate(-50%,-50%) scale(0.2); opacity: 0; }
+    to{ transform: translate(-50%,-50%) scale(1); opacity: var(--target-opacity, 1); }
+  }
+
+  .vis-favored{ filter: blur(0.3px); }
+  .vis-exposed{ filter: drop-shadow(0 0 4px rgba(0,0,0,0.35)); }
+
+  .bear-btn.evading{ animation: evade-flash 0.3s ease; }
+  @keyframes evade-flash{
+    0%{ filter: brightness(1); }
+    40%{ filter: brightness(1.7) saturate(1.4); transform: translate(-50%,-50%) scale(1.2); }
+    100%{ filter: brightness(1); transform: translate(-50%,-50%) scale(1); }
+  }
+
+  /* habitat backgrounds */
+  .bg-forest{ background:
+    radial-gradient(circle at 15% 20%, rgba(30,50,25,0.55) 60px, transparent 61px),
+    radial-gradient(circle at 70% 65%, rgba(30,50,25,0.5) 90px, transparent 91px),
+    radial-gradient(circle at 40% 80%, rgba(30,50,25,0.45) 70px, transparent 71px),
+    radial-gradient(circle at 85% 15%, rgba(30,50,25,0.5) 55px, transparent 56px),
+    linear-gradient(160deg, #3f6b34, #294e22 70%); }
+
+  .bg-garden{ background:
+    radial-gradient(circle at 20% 30%, rgba(255,224,60,0.55) 10px, transparent 11px),
+    radial-gradient(circle at 60% 20%, rgba(255,224,60,0.55) 8px, transparent 9px),
+    radial-gradient(circle at 80% 60%, rgba(255,224,60,0.55) 9px, transparent 10px),
+    radial-gradient(circle at 35% 75%, rgba(255,224,60,0.5) 8px, transparent 9px),
+    radial-gradient(circle at 10% 65%, rgba(255,224,60,0.5) 7px, transparent 8px),
+    linear-gradient(160deg, #d3495a, #a8283a 70%); }
+
+  .bg-grove{ background:
+    radial-gradient(circle at 25% 25%, rgba(120,70,20,0.4) 34px, transparent 35px),
+    radial-gradient(circle at 65% 55%, rgba(120,70,20,0.4) 40px, transparent 41px),
+    radial-gradient(circle at 85% 20%, rgba(120,70,20,0.35) 30px, transparent 31px),
+    radial-gradient(circle at 40% 80%, rgba(120,70,20,0.35) 32px, transparent 33px),
+    linear-gradient(160deg, #e08a2e, #b5651a 70%); }
+
+  .bg-beach{ background:
+    repeating-linear-gradient(100deg, rgba(255,255,255,0.12) 0 4px, transparent 4px 40px),
+    linear-gradient(170deg, #e9d18f, #d8ae5c 70%); }
+
+  .bg-urban{ background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 40px),
+    linear-gradient(160deg, #8b8f8c, #646864 70%); }
+
+  .bg-jungle{ background:
+    radial-gradient(circle at 20% 25%, rgba(91,140,62,0.65) 70px, transparent 71px),
+    radial-gradient(circle at 75% 20%, rgba(232,197,71,0.55) 60px, transparent 61px),
+    radial-gradient(circle at 30% 75%, rgba(217,58,58,0.5) 65px, transparent 66px),
+    radial-gradient(circle at 78% 70%, rgba(91,140,62,0.6) 60px, transparent 61px),
+    radial-gradient(circle at 50% 50%, rgba(232,197,71,0.45) 50px, transparent 51px),
+    linear-gradient(160deg, #2e5c33, #1f3f26 70%); }
+
+  .bg-meadow{ background:
+    repeating-linear-gradient(115deg, rgba(255,255,255,0.05) 0 3px, transparent 3px 26px),
+    radial-gradient(circle at 30% 70%, rgba(255,255,255,0.06) 40px, transparent 41px),
+    radial-gradient(circle at 75% 30%, rgba(255,255,255,0.06) 55px, transparent 56px),
+    linear-gradient(165deg, #9fc45c, #6d9a3a 70%); }
+
+  .bg-field{ background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 34px),
+    linear-gradient(165deg, #cdb987, #a9925e 70%); }
+
+  /* ---------- tally ---------- */
+  .tally-row{
+    display: grid;
+    border: 1.5px solid var(--ink);
+    border-top: none;
+    margin-bottom: 2px;
+  }
+  .tally-item{
+    padding: 10px 8px;
+    text-align: center;
+    border-left: 1px solid var(--card-line);
+  }
+  .tally-item:first-child{ border-left: none; }
+  .tally-swatch{
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    margin: 0 auto 6px;
+    border: 1px solid rgba(0,0,0,0.2);
+  }
+  .tally-count{ font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-weight: 700; font-size: 1.1rem; }
+  .tally-label{ font-size: 0.7rem; color: var(--ink-soft); }
+  .tally-dim-label{
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    margin: 10px 0 -2px;
+    font-weight: 600;
+    text-transform: lowercase;
+  }
+
+  /* ---------- results ---------- */
+  .results-panel{
+    border: 1.5px solid var(--ink);
+    padding: 20px;
+    background: rgba(255,255,255,0.3);
+  }
+  canvas.chart-canvas{ width: 100%; height: auto; display: block; margin: 10px 0 20px; }
+
+  table.freq-table{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+  }
+  table.freq-table th, table.freq-table td{
+    border: 1px solid var(--card-line);
+    padding: 8px 10px;
+    text-align: left;
+  }
+  table.freq-table th{ background: var(--paper-dark); font-weight: 600; }
+  table.freq-table td.num{ font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+  .swatch-dot{
+    display: inline-block;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    margin-right: 7px;
+    border: 1px solid rgba(0,0,0,0.2);
+    vertical-align: middle;
+  }
+
+  .conclusion{
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    border-left: 3px solid var(--rust);
+    padding-left: 16px;
+    margin-bottom: 20px;
+  }
+
+  .results-actions{ display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+
+  /* ---------- lab log ---------- */
+  .log-entry{
+    border: 1px solid var(--card-line);
+    border-left: 4px solid var(--moss);
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    background: rgba(255,255,255,0.35);
+  }
+  .log-entry h3{
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+    font-size: 1.05rem;
+    margin: 0 0 4px;
+  }
+  .log-entry .log-kind{
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--moss-dark);
+    background: rgba(67,89,63,0.12);
+    border-radius: 2px;
+    padding: 2px 7px;
+    margin-bottom: 6px;
+  }
+  .log-entry p{ margin: 4px 0; font-size: 0.88rem; color: var(--ink-soft); line-height: 1.5; }
+  .log-entry .log-hyp{ font-style: italic; color: var(--ink); }
+  .log-final-row{ font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.82rem; color: var(--ink); }
+
+  .copy-status{ font-size: 0.85rem; color: var(--moss-dark); margin-left: 10px; }
+
+  /* ---------- level checkpoint quiz ---------- */
+  .trial-quiz{
+    border-top: 2px solid var(--ink);
+    margin-top: 32px;
+    padding-top: 20px;
+  }
+  .quiz-question{ margin-bottom: 18px; }
+  .quiz-q-title{ font-weight: 600; margin: 0 0 8px; }
+  .quiz-options{ display: flex; flex-direction: column; gap: 6px; }
+  .quiz-option-btn{
+    text-align: left;
+    padding: 10px 12px;
+    border: 1.5px solid var(--card-line);
+    background: rgba(255,255,255,0.5);
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 0.92rem;
+    color: var(--ink);
+  }
+  .quiz-option-btn:hover:not(:disabled){ border-color: var(--moss); }
+  .quiz-option-btn.selected{ border-color: var(--rust); background: rgba(176,73,45,0.08); }
+  .quiz-option-btn.correct{ border-color: var(--moss); background: rgba(67,89,63,0.15); font-weight: 600; }
+  .quiz-option-btn.incorrect{ border-color: var(--rust); background: rgba(176,73,45,0.12); text-decoration: line-through; }
+  .quiz-option-btn:disabled{ cursor: default; }
+  .quiz-explain{ font-size: 0.85rem; color: var(--ink-soft); margin: 8px 0 0; font-style: italic; }
+  .quiz-result-msg{ margin-top: 14px; font-weight: 600; }
+  .quiz-result-msg.pass{ color: var(--moss-dark); }
+  .quiz-result-msg.fail{ color: var(--rust); }
+  .quiz-result-msg .primary-btn{ margin-top: 10px; }
+
+  [hidden]{ display: none !important; }
+
+  footer.credits{
+    margin-top: 60px;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+<noscript>
+  <div style="max-width:640px;margin:60px auto;padding:20px;border:2px solid #232a22;background:#efe7d8;color:#232a22;font-family:Georgia,serif;">
+    <strong>This page needs JavaScript to run.</strong> It looks like scripts are disabled or blocked in whatever you're viewing this file with (this can happen in email previews or some file-sharing viewers). Save the file and open it directly in a browser like Chrome, Firefox, Safari or Edge, then try again.
+  </div>
+</noscript>
+<div class="page">
+
+  <header class="masthead">
+    <h1>Survival of the Gummiest</h1>
+    <p class="subtitle">A natural selection simulation. Hunt a population of gummy bears for seven rounds of predation and watch which traits survive.</p>
+    <p class="origin-note">This is a digital version of the gummy bear natural selection lab from class. Each part changes what the trait under selection is: colour and habitat, speed and agility, size, and finally all three at once. Every trial you run — from any part — is added to the lab log at the bottom of the page for your report.</p>
+    <nav class="part-nav" aria-label="Jump to a part">
+      <span class="part-nav-label">The four parts are independent — do them in any order:</span>
+      <a href="#part1">Part 1</a>
+      <a href="#part2">Part 2</a>
+      <a href="#part3">Part 3</a>
+      <a href="#part4">Part 4</a>
+    </nav>
+  </header>
+
+  <!-- ======================= PART 1: CAMOUFLAGE ======================= -->
+
+  <h2 class="part-heading first" id="part1">Part 1 — Camouflage</h2>
+  <p class="part-intro">Colour is the trait under selection. A population of 50 bears is released into a habitat and drifts slowly across it — every bear moves at the same gentle pace, so the only thing that changes your chances of catching one is how well it blends in.</p>
+
+  <section class="setup" id="setupSection1">
+    <div id="envPickerContainer1"></div>
+    <div class="setup-block">
+      <h2>2. Write your hypothesis</h2>
+      <p class="hint">Predict what will happen to each bear colour in this habitat after seven rounds of predation. Write it as a statement, e.g. "Green bears will become the most common colour because they blend into the forest floor."</p>
+      <textarea id="hypothesisInput1" placeholder="Type your hypothesis here..."></textarea>
+    </div>
+    <button class="primary-btn" id="releaseBtn1" disabled>Release the bears</button>
+  </section>
+
+  <section class="stage" id="stageSection1" hidden>
+    <h2 id="stageHeading1">Habitat</h2>
+    <div class="hud">
+      <div class="hud-item"><span class="hud-label">generation</span><span class="hud-value" id="genValue1">1 / 8</span></div>
+      <div class="timer-track"><div class="timer-fill" id="timerFill1"></div></div>
+      <div class="hud-item"><span class="hud-label">caught this round</span><span class="hud-value" id="caughtValue1">0</span></div>
+    </div>
+    <div class="habitat-stage" id="habitatStage1">
+      <button class="stage-overlay-btn" id="startRoundBtn1">Start round 1</button>
+    </div>
+    <div id="tallyContainer1"></div>
+    <p class="hint" style="margin-top:12px;">Click or tap a bear to catch it before the timer runs out. Bears that blend into the habitat are harder to spot — that's selection pressure at work.</p>
+  </section>
+
+  <section class="results" id="resultsSection1" hidden>
+    <h2>Results: generation 8</h2>
+    <div class="results-panel" id="resultsBody1"></div>
+    <div class="results-actions"><button class="primary-btn" id="tryAnotherBtn1" disabled>Try another habitat</button></div>
+  </section>
+
+  <!-- ======================= PART 2: SPEED AND AGILITY ======================= -->
+
+  <h2 class="part-heading" id="part2">Part 2 — Speed and agility</h2>
+  <p class="part-intro">Colour no longer matters — every bear looks identical. Half are fast and half are slow, and you won't know which is which until the round starts and they begin to move at their own constant speed. Being hard to catch, not hard to see, is the trait under selection.</p>
+
+  <section class="setup" id="setupSection2">
+    <div id="envPickerContainer2"></div>
+    <div class="setup-block">
+      <h2>1. Write your hypothesis</h2>
+      <p class="hint">Predict what will happen to fast and slow bears after seven rounds of predation, e.g. "Fast bears will become the majority because they are harder to catch before they move away."</p>
+      <textarea id="hypothesisInput2" placeholder="Type your hypothesis here..."></textarea>
+    </div>
+    <button class="primary-btn" id="releaseBtn2" disabled>Release the bears</button>
+  </section>
+
+  <section class="stage" id="stageSection2" hidden>
+    <h2 id="stageHeading2">Open meadow</h2>
+    <div class="hud">
+      <div class="hud-item"><span class="hud-label">generation</span><span class="hud-value" id="genValue2">1 / 8</span></div>
+      <div class="timer-track"><div class="timer-fill" id="timerFill2"></div></div>
+      <div class="hud-item"><span class="hud-label">caught this round</span><span class="hud-value" id="caughtValue2">0</span></div>
+    </div>
+    <div class="habitat-stage" id="habitatStage2">
+      <button class="stage-overlay-btn" id="startRoundBtn2">Start round 1</button>
+    </div>
+    <div id="tallyContainer2"></div>
+    <p class="hint" style="margin-top:12px;">Once the round starts, fast bears glide across the meadow quickly and slow bears barely drift. Click or tap a bear to catch it — but every bear has a 50% chance to dodge your grab and dash away, so even a well-aimed click isn't a guaranteed catch.</p>
+  </section>
+
+  <section class="results" id="resultsSection2" hidden>
+    <h2>Results: generation 8</h2>
+    <div class="results-panel" id="resultsBody2"></div>
+    <div class="results-actions"><button class="primary-btn" id="tryAnotherBtn2" disabled>Run it again</button></div>
+  </section>
+
+  <!-- ======================= PART 3: SIZE ======================= -->
+
+  <h2 class="part-heading" id="part3">Part 3 — Size</h2>
+  <p class="part-intro">Now size is the trait under selection. Every bear is the same colour and drifts at the same slow, constant speed as in Part 1 — the only difference between them is how big a target they are. Large bears are easy to grab; small bears are much harder to pin down.</p>
+
+  <section class="setup" id="setupSection3">
+    <div id="envPickerContainer3"></div>
+    <div class="setup-block">
+      <h2>1. Write your hypothesis</h2>
+      <p class="hint">Predict what will happen to large and small bears after seven rounds of predation, e.g. "Small bears will become the majority because they are harder to see and catch."</p>
+      <textarea id="hypothesisInput3" placeholder="Type your hypothesis here..."></textarea>
+    </div>
+    <button class="primary-btn" id="releaseBtn3" disabled>Release the bears</button>
+  </section>
+
+  <section class="stage" id="stageSection3" hidden>
+    <h2 id="stageHeading3">Open field</h2>
+    <div class="hud">
+      <div class="hud-item"><span class="hud-label">generation</span><span class="hud-value" id="genValue3">1 / 8</span></div>
+      <div class="timer-track"><div class="timer-fill" id="timerFill3"></div></div>
+      <div class="hud-item"><span class="hud-label">caught this round</span><span class="hud-value" id="caughtValue3">0</span></div>
+    </div>
+    <div class="habitat-stage" id="habitatStage3">
+      <button class="stage-overlay-btn" id="startRoundBtn3">Start round 1</button>
+    </div>
+    <div id="tallyContainer3"></div>
+    <p class="hint" style="margin-top:12px;">All bears drift at the same gentle pace. Click or tap a bear to catch it before the timer runs out — the small ones take a much steadier hand.</p>
+  </section>
+
+  <section class="results" id="resultsSection3" hidden>
+    <h2>Results: generation 8</h2>
+    <div class="results-panel" id="resultsBody3"></div>
+    <div class="results-actions"><button class="primary-btn" id="tryAnotherBtn3" disabled>Run it again</button></div>
+  </section>
+
+  <!-- ======================= PART 4: ALL PRESSURES COMBINED ======================= -->
+
+  <h2 class="part-heading" id="part4">Part 4 — All pressures combined</h2>
+  <p class="part-intro">Real populations rarely face just one kind of pressure at a time. Here, colour, speed, and size all vary at once and are assigned independently — a bear's colour tells you nothing about how fast or big it is. Choose a habitat as in Part 1; every bear also has its own speed and size. Results are reported separately for each trait, so you can see whether camouflage, speed, or size ends up mattering most.</p>
+
+  <section class="setup" id="setupSection4">
+    <div id="envPickerContainer4"></div>
+    <div class="setup-block">
+      <h2>2. Write your hypothesis</h2>
+      <p class="hint">Predict what you think will matter most — colour, speed, or size — and why, e.g. "Speed will matter more than colour, because even an exposed bear can escape if it moves fast enough."</p>
+      <textarea id="hypothesisInput4" placeholder="Type your hypothesis here..."></textarea>
+    </div>
+    <button class="primary-btn" id="releaseBtn4" disabled>Release the bears</button>
+  </section>
+
+  <section class="stage" id="stageSection4" hidden>
+    <h2 id="stageHeading4">Habitat</h2>
+    <div class="hud">
+      <div class="hud-item"><span class="hud-label">generation</span><span class="hud-value" id="genValue4">1 / 8</span></div>
+      <div class="timer-track"><div class="timer-fill" id="timerFill4"></div></div>
+      <div class="hud-item"><span class="hud-label">caught this round</span><span class="hud-value" id="caughtValue4">0</span></div>
+    </div>
+    <div class="habitat-stage" id="habitatStage4">
+      <button class="stage-overlay-btn" id="startRoundBtn4">Start round 1</button>
+    </div>
+    <div id="tallyContainer4"></div>
+    <p class="hint" style="margin-top:12px;">Colour, speed, and size are all in play together now. Click or tap a bear to catch it before the timer runs out.</p>
+  </section>
+
+  <section class="results" id="resultsSection4" hidden>
+    <h2>Results: generation 8</h2>
+    <div class="results-panel" id="resultsBody4"></div>
+    <div class="results-actions"><button class="primary-btn" id="tryAnotherBtn4" disabled>Try another habitat</button></div>
+  </section>
+
+  <!-- ======================= SHARED LAB LOG ======================= -->
+
+  <section class="lab-log" id="labLogSection" hidden>
+    <h2>Lab log</h2>
+    <p class="hint">Every trial you complete, from any part, is recorded here as soon as its results appear. Copy this into your report — for Part 1, run all three habitats (including the tropical jungle), plus at least one run each of Parts 2, 3, and 4.</p>
+    <div id="labLogEntries"></div>
+    <button class="ghost-btn" id="exportBtn">Copy lab log</button>
+    <span class="copy-status" id="copyStatus"></span>
+  </section>
+
+  <footer class="credits">Based on the class gummy bear natural selection lab. Every population starts at 50 bears and runs for seven rounds of predation across eight generations; survivors reproduce at a rate of 1.1 per round, so a trait that hits zero is extinct for good. Each trial ends with a short quiz on your own data before you can start another.</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const ROUND_SECONDS = [7, 6.75, 6.5, 6.25, 6, 5.75, 5.5];
+  const NUM_ROUNDS = ROUND_SECONDS.length;
+  const TOTAL_GENERATIONS = NUM_ROUNDS + 1;
+  const REPRODUCTION_RATE = 1.1;
+  const START_TOTAL = 50;
+  const labLog = [];
+
+  // ================= trait dimension data =================
+
+  const COLOR_CATS = ["red","orange","green","yellow","watermelon"];
+  const COLOR_LABELS = { red: "Red", orange: "Orange", green: "Green", yellow: "Yellow", watermelon: "Watermelon" };
+  const COLOR_BEAR_HEX = { red: "#d93a3a", orange: "#e08a2e", green: "#5b8c3e", yellow: "#e8c547", watermelon: "#f3d7da" };
+  const COLOR_CHART_HEX = { red: "#d93a3a", orange: "#e08a2e", green: "#5b8c3e", yellow: "#e8c547", watermelon: "#b06a76" };
+  const BASE_OPACITY = { red: 0.9, orange: 0.9, green: 0.9, yellow: 0.9, watermelon: 0.6 };
+
+  const SPEED_CATS = ["fast","slow"];
+  const SPEED_LABELS = { fast: "Fast", slow: "Slow" };
+  const SPEED_CHART_HEX = { fast: "#2f6f8f", slow: "#8a5a2f" };
+  const SPEED_VALUES = { fast: 48, slow: 11 };
+  const UNIFORM_SLOW_SPEED = 9;
+
+  const SIZE_CATS = ["large","small"];
+  const SIZE_LABELS = { large: "Large", small: "Small" };
+  const SIZE_CHART_HEX = { large: "#6b4a8a", small: "#2f8f6f" };
+  const SIZE_SCALE = { large: 1.55, small: 0.62 };
+
+  const COLOR_DIM = { key: "color", cats: COLOR_CATS, labels: COLOR_LABELS, chartHex: COLOR_CHART_HEX, traitHeader: "Colour", noun: "colour", resultsTitle: "Colour results" };
+  const SPEED_DIM = { key: "speed", cats: SPEED_CATS, labels: SPEED_LABELS, chartHex: SPEED_CHART_HEX, traitHeader: "Speed", noun: "speed type", resultsTitle: "Speed results" };
+  const SIZE_DIM  = { key: "size",  cats: SIZE_CATS,  labels: SIZE_LABELS,  chartHex: SIZE_CHART_HEX,  traitHeader: "Size",  noun: "size",       resultsTitle: "Size results" };
+
+  const HABITATS = [
+    { id: "forest", name: "Green forest", bgClass: "bg-forest", desc: "Dense canopy and shadow. Favours green.", favored: "green", exposed: "orange" },
+    { id: "urban", name: "Dingy urban landscape", bgClass: "bg-urban", desc: "Grey concrete and glare. Favours watermelon.", favored: "watermelon", exposed: "yellow" },
+    { id: "jungle", name: "Tropical jungle", bgClass: "bg-jungle", desc: "A patchwork of colour. No single favourite.", diverse: true,
+      patches: [
+        { x: 20, y: 25, r: 17, color: "green" }, { x: 75, y: 20, r: 15, color: "yellow" },
+        { x: 30, y: 75, r: 16, color: "red" }, { x: 78, y: 70, r: 15, color: "green" },
+        { x: 50, y: 50, r: 12, color: "yellow" }
+      ]
+    }
+  ];
+
+  // ================= shared helpers =================
+
+  function totalOf(pop, categories){ return categories.reduce((s,c) => s + (pop[c]||0), 0); }
+
+  function escapeHtml(s){
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function bearSvg(color, translucent, scale){
+    scale = scale || 1;
+    const w = (26*scale).toFixed(1), h = (32*scale).toFixed(1);
+    const stroke = translucent
+      ? 'stroke="#c9a3a8" stroke-width="1" stroke-dasharray="2,2"'
+      : 'stroke="rgba(0,0,0,0.25)" stroke-width="0.6"';
+    return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 26 32" xmlns="http://www.w3.org/2000/svg">' +
+      '<ellipse cx="13" cy="21" rx="8.5" ry="10" fill="' + color + '" ' + stroke + '/>' +
+      '<circle cx="6" cy="9" r="3.4" fill="' + color + '" ' + stroke + '/>' +
+      '<circle cx="20" cy="9" r="3.4" fill="' + color + '" ' + stroke + '/>' +
+      '<circle cx="13" cy="10" r="6.5" fill="' + color + '" ' + stroke + '/>' +
+      '<ellipse cx="4.5" cy="20" rx="3" ry="4.5" fill="' + color + '" ' + stroke + '/>' +
+      '<ellipse cx="21.5" cy="20" rx="3" ry="4.5" fill="' + color + '" ' + stroke + '/>' +
+      '<ellipse cx="8" cy="30" rx="3" ry="3.5" fill="' + color + '" ' + stroke + '/>' +
+      '<ellipse cx="18" cy="30" rx="3" ry="3.5" fill="' + color + '" ' + stroke + '/>' +
+      '</svg>';
+  }
+
+  function getVisibilityClass(color, xPct, yPct, habitat){
+    if (!habitat) return "";
+    if (habitat.diverse){
+      for (const p of habitat.patches){
+        const dx = xPct - p.x, dy = yPct - p.y;
+        if (Math.sqrt(dx*dx + dy*dy) <= p.r && p.color === color) return "vis-favored";
+      }
+      return "";
+    }
+    if (color === habitat.favored) return "vis-favored";
+    if (color === habitat.exposed) return "vis-exposed";
+    return "";
+  }
+
+  function opacityFor(color, visClass){
+    let base = BASE_OPACITY[color] !== undefined ? BASE_OPACITY[color] : 0.9;
+    if (visClass === "vis-favored") base = Math.min(base, 0.38);
+    if (visClass === "vis-exposed") base = 1;
+    return base;
+  }
+
+  function buildCombos(traitDims){
+    let combos = [{}];
+    traitDims.forEach(dim => {
+      const next = [];
+      combos.forEach(partial => {
+        dim.cats.forEach(cat => {
+          const o = Object.assign({}, partial);
+          o[dim.key] = cat;
+          next.push(o);
+        });
+      });
+      combos = next;
+    });
+    combos.forEach(c => { c.__key = traitDims.map(d => c[d.key]).join("|"); });
+    return combos;
+  }
+
+  function distributeEvenly(combos, total){
+    const n = combos.length;
+    const base = Math.floor(total/n);
+    const rem = total - base*n;
+    const pop = {};
+    combos.forEach(c => pop[c.__key] = base);
+    const indices = combos.map((_,i) => i);
+    for (let i = indices.length-1; i>0; i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    for (let i=0; i<rem; i++){ pop[combos[indices[i]].__key] += 1; }
+    return pop;
+  }
+
+  function comboFromKey(key, traitDims){
+    const parts = String(key).split("|");
+    const obj = {};
+    traitDims.forEach((d,i) => { obj[d.key] = parts[i]; });
+    return obj;
+  }
+
+  function marginalOf(snapshot, traitDims, dim){
+    const res = {};
+    dim.cats.forEach(c => res[c] = 0);
+    Object.keys(snapshot).forEach(k => {
+      const combo = comboFromKey(k, traitDims);
+      res[combo[dim.key]] += snapshot[k];
+    });
+    return res;
+  }
+
+  function renderTallyGeneric(containerEl, idKey, pop, categories, labels, hexMap){
+    containerEl.style.gridTemplateColumns = "repeat(" + categories.length + ",1fr)";
+    containerEl.innerHTML = "";
+    categories.forEach(c => {
+      const item = document.createElement("div");
+      item.className = "tally-item";
+      item.innerHTML =
+        '<div class="tally-swatch" style="background:' + hexMap[c] + '"></div>' +
+        '<div class="tally-count" id="tally-' + idKey + '-' + c + '">' + pop[c] + '</div>' +
+        '<div class="tally-label">' + labels[c] + '</div>';
+      containerEl.appendChild(item);
+    });
+  }
+
+  function drawChartGeneric(canvas, hist, categories, hexMap){
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+
+    const padL = 44, padR = 16, padT = 16, padB = 34;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+
+    ctx.strokeStyle = "#4b5245";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT);
+    ctx.lineTo(padL, padT+plotH);
+    ctx.lineTo(padL+plotW, padT+plotH);
+    ctx.stroke();
+
+    ctx.fillStyle = "#4b5245";
+    ctx.font = "12px 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace";
+    for (let pct=0; pct<=100; pct+=25){
+      const y = padT + plotH - (pct/100)*plotH;
+      ctx.fillText(pct+"%", 6, y+4);
+      ctx.strokeStyle = "rgba(75,82,69,0.15)";
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL+plotW, y);
+      ctx.stroke();
+    }
+    for (let g=0; g<hist.length; g++){
+      const x = padL + (g/(hist.length-1))*plotW;
+      ctx.fillStyle = "#4b5245";
+      ctx.fillText("g"+(g+1), x-8, padT+plotH+20);
+    }
+
+    categories.forEach(cat => {
+      ctx.strokeStyle = hexMap[cat];
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      hist.forEach((pop, g) => {
+        const total = totalOf(pop, categories) || 1;
+        const pct = (pop[cat]/total)*100;
+        const x = padL + (g/(hist.length-1))*plotW;
+        const y = padT + plotH - (pct/100)*plotH;
+        if (g===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+
+      const lastPop = hist[hist.length-1];
+      const lastTotal = totalOf(lastPop, categories) || 1;
+      const lastPct = (lastPop[cat]/lastTotal)*100;
+      const lastX = padL+plotW;
+      const lastY = padT + plotH - (lastPct/100)*plotH;
+      ctx.fillStyle = hexMap[cat];
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, 4, 0, Math.PI*2);
+      ctx.fill();
+    });
+  }
+
+  function renderFreqTableGeneric(table, hist, categories, labels, hexMap, traitHeader){
+    const first = hist[0], last = hist[hist.length-1];
+    const lastTotal = totalOf(last, categories) || 1;
+
+    let html = "<tr><th>" + traitHeader + "</th><th>Generation 1 count</th><th>Generation " + TOTAL_GENERATIONS + " count</th><th>Generation " + TOTAL_GENERATIONS + " frequency</th><th>Outcome</th></tr>";
+    categories.forEach(c => {
+      const startCount = first[c];
+      const endCount = last[c];
+      const pct = ((endCount/lastTotal)*100).toFixed(1);
+      let outcome;
+      if (endCount === 0) outcome = "Extinct";
+      else if (endCount > startCount) outcome = "Increased";
+      else if (endCount < startCount) outcome = "Decreased";
+      else outcome = "Unchanged";
+      html += "<tr><td><span class='swatch-dot' style='background:"+hexMap[c]+"'></span>"+labels[c]+"</td>" +
+        "<td class='num'>"+startCount+"</td><td class='num'>"+endCount+"</td>" +
+        "<td class='num'>"+pct+"%</td><td>"+outcome+"</td></tr>";
+    });
+    table.innerHTML = html;
+  }
+
+  function buildConclusionText(hist, categories, labels, envName, traitNoun, startTotal){
+    const first = hist[0], last = hist[hist.length-1];
+    const lastTotal = totalOf(last, categories) || 1;
+
+    let winner = categories[0];
+    categories.forEach(c => { if (last[c] > last[winner]) winner = c; });
+    const extinctCats = categories.filter(c => last[c] === 0);
+
+    let text = "In the " + envName.toLowerCase() + ", " + labels[winner].toLowerCase() +
+      " bears ended generation " + TOTAL_GENERATIONS + " as the most common " + traitNoun + ", at " +
+      ((last[winner]/lastTotal)*100).toFixed(1) + "% of the population (up from " +
+      ((first[winner]/startTotal)*100).toFixed(0) + "% at the start). ";
+
+    if (extinctCats.length){
+      text += extinctCats.map(c => labels[c]).join(" and ") + " bears went extinct by generation " + TOTAL_GENERATIONS + ".";
+    } else {
+      text += "No " + traitNoun + " went extinct in this trial — some variation survived in the population.";
+    }
+    return text;
+  }
+
+  function addLogEntry(kind, envName, hyp, rawHistory, traitDims){
+    labLog.push({
+      kind, envName, hyp,
+      history: rawHistory.map(s => Object.assign({}, s)),
+      traitDims: traitDims.map(d => ({
+        key: d.key, cats: d.cats.slice(),
+        labels: Object.assign({}, d.labels),
+        chartHex: Object.assign({}, d.chartHex),
+        noun: d.noun
+      }))
+    });
+  }
+
+  function renderLog(){
+    const container = document.getElementById("labLogEntries");
+    container.innerHTML = "";
+    labLog.forEach((entry, i) => {
+      const last = entry.history[entry.history.length-1];
+      const lines = entry.traitDims.map(dim => {
+        const marg = marginalOf(last, entry.traitDims, dim);
+        const tot = totalOf(marg, dim.cats) || 1;
+        const parts = dim.cats.map(c => dim.labels[c] + " " + ((marg[c]/tot)*100).toFixed(0) + "%").join("  ·  ");
+        return (entry.traitDims.length > 1 ? capitalize(dim.noun) + ": " : "") + parts;
+      });
+
+      const div = document.createElement("div");
+      div.className = "log-entry";
+      div.innerHTML =
+        "<span class='log-kind'>" + entry.kind + "</span>" +
+        "<h3>Trial " + (i+1) + ": " + entry.envName + "</h3>" +
+        "<p class='log-hyp'>Hypothesis: " + escapeHtml(entry.hyp) + "</p>" +
+        lines.map(l => "<p class='log-final-row'>" + l + "</p>").join("");
+      container.appendChild(div);
+    });
+  }
+
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    let text = "GUMMY BEAR NATURAL SELECTION — LAB LOG\n\n";
+    labLog.forEach((entry, i) => {
+      text += "Trial " + (i+1) + " (" + entry.kind + "): " + entry.envName + "\n";
+      text += "Hypothesis: " + entry.hyp + "\n";
+      entry.traitDims.forEach(dim => {
+        text += "-- " + capitalize(dim.noun) + " --\n";
+        text += "Generation | " + dim.cats.map(c=>dim.labels[c]).join(" | ") + " | Total\n";
+        entry.history.forEach((snap, g) => {
+          const marg = marginalOf(snap, entry.traitDims, dim);
+          const tot = totalOf(marg, dim.cats);
+          text += (g+1) + " | " + dim.cats.map(c=>marg[c]).join(" | ") + " | " + tot + "\n";
+        });
+      });
+      text += "\n";
+    });
+
+    const status = document.getElementById("copyStatus");
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(() => {
+        status.textContent = "Copied to clipboard.";
+        setTimeout(() => status.textContent = "", 2500);
+      }).catch(() => {
+        status.textContent = "Could not copy — select and copy the log manually.";
+      });
+    } else {
+      status.textContent = "Clipboard not available in this browser.";
+    }
+  });
+
+  function revealLabLogIfNeeded(){
+    document.getElementById("labLogSection").hidden = false;
+  }
+
+  // ================= end-of-trial quiz =================
+
+  const CONCEPT_QUESTIONS = [
+    { q: "Which statement is true about evolution?",
+      options: ["Individual organisms can evolve during their lifetime.", "Only populations can evolve, not individuals.", "Evolution requires no variation in a population.", "Evolution only happens to endangered species."],
+      correct: 1, explain: "Individuals don't evolve — their genes don't change. Populations evolve when the frequency of traits shifts across generations." },
+    { q: "What is a selection pressure?",
+      options: ["Any factor that makes some individuals more likely to survive and reproduce than others.", "The force that causes mutations.", "A method scientists use to breed animals.", "The total number of individuals in a population."],
+      correct: 0, explain: "A selection pressure is anything — like a predator, climate, or habitat — that gives some individuals a survival or reproductive advantage over others." },
+    { q: "In this simulation, what does a trait's 'frequency' mean?",
+      options: ["How many bears have ever had that trait, in total.", "The percentage of the current population that has that trait.", "How fast a bear with that trait can move.", "The order the traits were released in."],
+      correct: 1, explain: "Frequency is the proportion (%) of the population with a particular trait at a given generation — the same idea as an allele frequency." },
+    { q: "If a trait's count reaches zero, what happens to it in later generations?",
+      options: ["It can reappear at random.", "It stays extinct — no bears with that trait can be produced again.", "It doubles in the next generation.", "It becomes the new hidden trait."],
+      correct: 1, explain: "Because bears reproduce by cloning themselves, once a trait is gone from the population it cannot come back." },
+    { q: "Why do camouflaged bears tend to survive more predation rounds?",
+      options: ["They move faster than other bears.", "They are larger and harder to grab.", "They are harder for predators to see against the habitat.", "Predators avoid eating certain colours on purpose."],
+      correct: 2, explain: "Camouflage works by reducing visibility, not by changing size or speed — predators simply can't find well-camouflaged prey as easily." },
+    { q: "What is 'survival of the fittest' really describing?",
+      options: ["The strongest individual in a species.", "Traits that increase survival and reproduction becoming more common over time.", "Animals competing in physical contests.", "The fastest species always winning."],
+      correct: 1, explain: "'Fitness' in evolution means reproductive success, not physical strength — any trait that helps an organism survive and reproduce can increase in frequency." },
+    { q: "Why does a population need variation for natural selection to occur?",
+      options: ["Variation is not actually required.", "Without differences between individuals, no trait can be selected for or against.", "Variation only matters for plants.", "Variation causes every individual to die at the same rate."],
+      correct: 1, explain: "If every individual were identical, nothing about a selection pressure could favour one over another — variation is essential." },
+    { q: "What best describes a habitat acting as a 'selective agent'?",
+      options: ["It provides food for every individual equally.", "It creates conditions that make some traits more advantageous than others.", "It has no effect on which traits survive.", "It only affects the size of the population, not its traits."],
+      correct: 1, explain: "A selective agent is anything in the environment — like a habitat's colours, or a predator — that creates pressure favouring some traits over others." }
+  ];
+
+  function shuffleArray(arr){
+    const copy = arr.slice();
+    for (let i=copy.length-1; i>0; i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  function pickRandom(arr, n){ return shuffleArray(arr).slice(0, n); }
+
+  function makeMCQ(qText, correctOptionText, distractorTexts, explain){
+    const options = shuffleArray([correctOptionText].concat(distractorTexts));
+    return { q: qText, options: options, correct: options.indexOf(correctOptionText), explain: explain };
+  }
+
+  function buildDataQuestions(traitDims, historySoFar){
+    const dim = traitDims[Math.floor(Math.random()*traitDims.length)];
+    const firstMarg = marginalOf(historySoFar[0], traitDims, dim);
+    const lastSnap = historySoFar[historySoFar.length-1];
+    const lastMarg = marginalOf(lastSnap, traitDims, dim);
+    const lastTotal = totalOf(lastMarg, dim.cats) || 1;
+    const firstTotal = totalOf(firstMarg, dim.cats) || 1;
+
+    let bestCat = dim.cats[0], bestDelta = -Infinity;
+    dim.cats.forEach(c => {
+      const delta = (lastMarg[c]/lastTotal) - (firstMarg[c]/firstTotal);
+      if (delta > bestDelta){ bestDelta = delta; bestCat = c; }
+    });
+    const qA = makeMCQ(
+      "So far in this trial, which " + dim.noun + " has increased the most as a share of the population?",
+      dim.labels[bestCat],
+      dim.cats.filter(c => c !== bestCat).map(c => dim.labels[c]),
+      dim.labels[bestCat] + " rose from about " + ((firstMarg[bestCat]/firstTotal)*100).toFixed(0) + "% to " +
+        ((lastMarg[bestCat]/lastTotal)*100).toFixed(0) + "% of the population so far."
+    );
+
+    const extinctCats = dim.cats.filter(c => lastMarg[c] === 0);
+    let qB;
+    if (extinctCats.length){
+      const extCat = extinctCats[0];
+      const others = dim.cats.filter(c => c !== extCat).map(c => dim.labels[c]);
+      qB = makeMCQ(
+        "Which " + dim.noun + " has gone extinct so far in this trial?",
+        dim.labels[extCat],
+        others.concat(["None have gone extinct yet"]).slice(0, 3),
+        dim.labels[extCat] + " reached zero bears, and since survivors just reproduce clones of themselves, it cannot come back."
+      );
+    } else {
+      const correctText = "All roughly equal, about " + Math.round(100/dim.cats.length) + "% each";
+      qB = makeMCQ(
+        "What was the generation 1 starting frequency of each " + dim.noun + " category in this trial?",
+        correctText,
+        ["One category started above 50%", "One category started at 0%", "It varies with no pattern"],
+        "Every trial starts as close to an even split across categories as possible, so any shift you see afterward is caused by selection, not a head start."
+      );
+    }
+
+    return [qA, qB];
+  }
+
+  function renderTrialQuiz(container, traitDims, historySoFar, onPass){
+    const wrap = document.createElement("div");
+    wrap.className = "trial-quiz";
+
+    const heading = document.createElement("h2");
+    heading.textContent = "Check your understanding";
+    wrap.appendChild(heading);
+
+    const intro = document.createElement("p");
+    intro.className = "hint";
+    intro.textContent = "Use the table and graph above to answer. Get every question right to unlock the button below.";
+    wrap.appendChild(intro);
+
+    const reflectionLabel = document.createElement("p");
+    reflectionLabel.className = "hint";
+    reflectionLabel.style.marginBottom = "6px";
+    reflectionLabel.innerHTML = "<strong>Reflection:</strong> How do these results compare to your hypothesis?";
+    wrap.appendChild(reflectionLabel);
+
+    const reflectionInput = document.createElement("textarea");
+    reflectionInput.placeholder = "Type a sentence or two...";
+    wrap.appendChild(reflectionInput);
+
+    const questionsContainer = document.createElement("div");
+    questionsContainer.style.marginTop = "18px";
+    wrap.appendChild(questionsContainer);
+
+    const submitBtn = document.createElement("button");
+    submitBtn.type = "button";
+    submitBtn.className = "primary-btn";
+    submitBtn.textContent = "Submit answers";
+    submitBtn.disabled = true;
+    wrap.appendChild(submitBtn);
+
+    const resultMsg = document.createElement("div");
+    resultMsg.className = "quiz-result-msg";
+    wrap.appendChild(resultMsg);
+
+    container.appendChild(wrap);
+
+    const refs = { reflectionInput, questionsContainer, submitBtn, resultMsg };
+
+    function renderQuestions(questions){
+      refs.questionsContainer.innerHTML = "";
+      refs.submitBtn.hidden = false;
+      refs.resultMsg.textContent = "";
+      refs.resultMsg.className = "quiz-result-msg";
+
+      function updateSubmitEnabled(){
+        const qDivs = Array.from(refs.questionsContainer.children);
+        refs.submitBtn.disabled = qDivs.some(d => d._quizMeta.selected === null) || refs.reflectionInput.value.trim().length === 0;
+      }
+
+      questions.forEach((qObj, qi) => {
+        const qDiv = document.createElement("div");
+        qDiv.className = "quiz-question";
+        const qTitle = document.createElement("p");
+        qTitle.className = "quiz-q-title";
+        qTitle.textContent = (qi+1) + ". " + qObj.q;
+        qDiv.appendChild(qTitle);
+
+        const optWrap = document.createElement("div");
+        optWrap.className = "quiz-options";
+        const explainDiv = document.createElement("p");
+        explainDiv.className = "quiz-explain";
+        explainDiv.hidden = true;
+
+        const meta = { qObj: qObj, selected: null, optWrap: optWrap, explainDiv: explainDiv, graded: false };
+        qDiv._quizMeta = meta;
+
+        qObj.options.forEach((optText, oi) => {
+          const optBtn = document.createElement("button");
+          optBtn.type = "button";
+          optBtn.className = "quiz-option-btn";
+          optBtn.textContent = optText;
+          optBtn.addEventListener("click", () => {
+            if (meta.graded){
+              // picking again after feedback clears that feedback so they can re-answer
+              optWrap.querySelectorAll(".quiz-option-btn").forEach(b => b.classList.remove("correct","incorrect"));
+              meta.explainDiv.hidden = true;
+              meta.graded = false;
+            }
+            optWrap.querySelectorAll(".quiz-option-btn").forEach(b => b.classList.remove("selected"));
+            optBtn.classList.add("selected");
+            meta.selected = oi;
+            updateSubmitEnabled();
+          });
+          optWrap.appendChild(optBtn);
+        });
+        qDiv.appendChild(optWrap);
+        qDiv.appendChild(explainDiv);
+        refs.questionsContainer.appendChild(qDiv);
+      });
+
+      refs.reflectionInput.oninput = updateSubmitEnabled;
+      updateSubmitEnabled();
+
+      refs.submitBtn.onclick = () => {
+        let correctCount = 0;
+        const qDivs = Array.from(refs.questionsContainer.children);
+        qDivs.forEach(qDiv => {
+          const meta = qDiv._quizMeta;
+          const isCorrect = meta.selected === meta.qObj.correct;
+          if (isCorrect) correctCount++;
+          meta.graded = true;
+          Array.from(meta.optWrap.children).forEach((b, oi) => {
+            b.classList.remove("correct","incorrect");
+            if (oi === meta.qObj.correct) b.classList.add("correct");
+            else if (oi === meta.selected) b.classList.add("incorrect");
+          });
+          meta.explainDiv.hidden = false;
+          meta.explainDiv.textContent = meta.qObj.explain;
+        });
+
+        if (correctCount === qDivs.length){
+          refs.resultMsg.textContent = "All correct — you can now try another trial below.";
+          refs.resultMsg.className = "quiz-result-msg pass";
+          refs.submitBtn.hidden = true;
+          qDivs.forEach(qDiv => {
+            Array.from(qDiv._quizMeta.optWrap.children).forEach(b => b.disabled = true);
+          });
+          onPass();
+        } else {
+          refs.resultMsg.className = "quiz-result-msg fail";
+          refs.resultMsg.textContent = correctCount + " of " + qDivs.length +
+            " correct. Read the feedback above, choose a new answer on anything marked wrong, then submit again.";
+        }
+      };
+    }
+
+    function buildAndRenderQuestions(){
+      const concept = pickRandom(CONCEPT_QUESTIONS, 2);
+      const dataQs = buildDataQuestions(traitDims, historySoFar);
+      const all = shuffleArray(concept.concat(dataQs));
+      renderQuestions(all);
+    }
+
+    buildAndRenderQuestions();
+  }
+
+  // ================= generic challenge engine =================
+
+  function createChallenge(cfg){
+    const idPrefix = cfg.idPrefix;
+    const traitDims = cfg.traitDims;
+    const hasColorDim = traitDims.some(d => d.key === "color");
+    const hasSizeDim = traitDims.some(d => d.key === "size");
+    const hasSpeedDim = traitDims.some(d => d.key === "speed");
+    const combos = buildCombos(traitDims);
+
+    let selectedHabitat = null;
+    let hypothesis = "";
+    let population = {};
+    let generation = 1;
+    let roundIndex = 0;
+    let history = [];
+    let aliveBears = [];
+    let roundActive = false;
+    let caughtThisRound = 0;
+    let timerHandle = null;
+    let rafId = null;
+    let lastFrameTime = null;
+
+    const setupSection = document.getElementById("setupSection" + idPrefix);
+    const stageSection = document.getElementById("stageSection" + idPrefix);
+    const resultsSection = document.getElementById("resultsSection" + idPrefix);
+    const stageHeading = document.getElementById("stageHeading" + idPrefix);
+    const habitatStage = document.getElementById("habitatStage" + idPrefix);
+    const genValue = document.getElementById("genValue" + idPrefix);
+    const caughtValue = document.getElementById("caughtValue" + idPrefix);
+    const timerFill = document.getElementById("timerFill" + idPrefix);
+    const tallyContainer = document.getElementById("tallyContainer" + idPrefix);
+    const startRoundBtn = document.getElementById("startRoundBtn" + idPrefix);
+    const hypothesisInput = document.getElementById("hypothesisInput" + idPrefix);
+    const releaseBtn = document.getElementById("releaseBtn" + idPrefix);
+    const envPickerContainer = document.getElementById("envPickerContainer" + idPrefix);
+    const resultsBody = document.getElementById("resultsBody" + idPrefix);
+    const tryAnotherBtn = document.getElementById("tryAnotherBtn" + idPrefix);
+
+    let selectedNoteEl = null;
+
+    if (cfg.useHabitatPicker){
+      const block = document.createElement("div");
+      block.className = "setup-block";
+      const heading = document.createElement("h2");
+      heading.textContent = "1. Choose a habitat";
+      const hint = document.createElement("p");
+      hint.className = "hint";
+      hint.textContent = cfg.habitatHint;
+      const grid = document.createElement("div");
+      grid.className = "habitat-grid";
+      const selectedNote = document.createElement("p");
+      selectedNote.className = "hint";
+      selectedNote.style.fontWeight = "600";
+      selectedNote.style.color = "var(--moss-dark)";
+      selectedNote.textContent = "No habitat selected yet — click one of the cards above.";
+      selectedNoteEl = selectedNote;
+      cfg.habitats.forEach(h => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "habitat-btn";
+        btn.setAttribute("aria-pressed", "false");
+        btn.innerHTML =
+          '<div class="habitat-swatch ' + h.bgClass + '"></div>' +
+          '<span class="habitat-name">' + h.name + '</span>' +
+          '<span class="habitat-desc">' + h.desc + '</span>';
+        btn.addEventListener("click", () => {
+          selectedHabitat = h;
+          grid.querySelectorAll(".habitat-btn").forEach(b => {
+            b.classList.remove("selected");
+            b.setAttribute("aria-pressed", "false");
+          });
+          btn.classList.add("selected");
+          btn.setAttribute("aria-pressed", "true");
+          selectedNote.textContent = "Selected: " + h.name + " — scroll down and release the bears when ready.";
+          checkReleaseReady();
+        });
+        grid.appendChild(btn);
+      });
+      block.appendChild(heading);
+      block.appendChild(hint);
+      block.appendChild(grid);
+      block.appendChild(selectedNote);
+      envPickerContainer.appendChild(block);
+    } else {
+      const preview = document.createElement("div");
+      preview.className = "env-preview";
+      preview.innerHTML =
+        '<div class="habitat-swatch ' + cfg.fixedEnv.bgClass + '"></div>' +
+        '<div><div class="habitat-name">' + cfg.fixedEnv.name + '</div><div class="habitat-desc">' + cfg.fixedEnv.desc + '</div></div>';
+      envPickerContainer.appendChild(preview);
+    }
+
+    hypothesisInput.addEventListener("input", () => {
+      hypothesis = hypothesisInput.value.trim();
+      checkReleaseReady();
+    });
+
+    function checkReleaseReady(){
+      const envOk = cfg.useHabitatPicker ? !!selectedHabitat : true;
+      releaseBtn.disabled = !(envOk && hypothesis.length > 0);
+    }
+
+    releaseBtn.addEventListener("click", startTrial);
+
+    function currentEnvName(){ return cfg.useHabitatPicker ? selectedHabitat.name : cfg.fixedEnv.name; }
+    function currentEnvBgClass(){ return cfg.useHabitatPicker ? selectedHabitat.bgClass : cfg.fixedEnv.bgClass; }
+
+    function startTrial(){
+      population = distributeEvenly(combos, START_TOTAL);
+      generation = 1;
+      roundIndex = 0;
+      history = [Object.assign({}, population)];
+
+      if (stageHeading) stageHeading.textContent = currentEnvName();
+      habitatStage.className = "habitat-stage " + currentEnvBgClass();
+
+      setupSection.hidden = true;
+      resultsSection.hidden = true;
+      stageSection.hidden = false;
+
+      updateHud();
+      spawnBears();
+      stageSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function updateHud(){
+      genValue.textContent = generation + " / " + TOTAL_GENERATIONS;
+      caughtValue.textContent = "0";
+      tallyContainer.innerHTML = "";
+      traitDims.forEach(dim => {
+        if (traitDims.length > 1){
+          const label = document.createElement("div");
+          label.className = "tally-dim-label";
+          label.textContent = dim.traitHeader;
+          tallyContainer.appendChild(label);
+        }
+        const marg = marginalOf(population, traitDims, dim);
+        const row = document.createElement("div");
+        row.className = "tally-row";
+        tallyContainer.appendChild(row);
+        renderTallyGeneric(row, idPrefix + "-" + dim.key, marg, dim.cats, dim.labels, dim.chartHex);
+      });
+    }
+
+    function spawnBears(){
+      habitatStage.querySelectorAll(".bear-btn").forEach(b => b.remove());
+      aliveBears = [];
+      caughtThisRound = 0;
+      caughtValue.textContent = "0";
+
+      const list = [];
+      Object.keys(population).forEach(key => {
+        const combo = comboFromKey(key, traitDims);
+        for (let i=0; i<population[key]; i++) list.push(Object.assign({}, combo, { __key: key }));
+      });
+      for (let i=list.length-1; i>0; i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [list[i], list[j]] = [list[j], list[i]];
+      }
+
+      const cols = 10;
+      const rows = Math.ceil(list.length / cols) || 1;
+      const cellW = 100/cols, cellH = 100/rows;
+
+      list.forEach((combo, idx) => {
+        const col = idx % cols, rowI = Math.floor(idx / cols);
+        const xPct = Math.min(96, Math.max(4, col*cellW + cellW/2 + (Math.random()*cellW*0.6 - cellW*0.3)));
+        const yPct = Math.min(94, Math.max(6, rowI*cellH + cellH/2 + (Math.random()*cellH*0.6 - cellH*0.3)));
+
+        let visClass = "";
+        let opacity = 0.9;
+        let bearHex = "#e0a83c";
+        let translucent = false;
+        if (hasColorDim){
+          bearHex = COLOR_BEAR_HEX[combo.color];
+          translucent = combo.color === "watermelon";
+          visClass = cfg.useHabitatPicker ? getVisibilityClass(combo.color, xPct, yPct, selectedHabitat) : "";
+          opacity = opacityFor(combo.color, visClass);
+        }
+        let scale = 1;
+        if (hasSizeDim){ scale = SIZE_SCALE[combo.size]; }
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "bear-btn entering " + visClass;
+        btn.style.left = xPct + "%";
+        btn.style.top = yPct + "%";
+        btn.style.setProperty("--target-opacity", opacity);
+        btn.style.opacity = opacity;
+        btn.style.animationDelay = (Math.random()*0.25) + "s";
+        btn.setAttribute("aria-label", "Catch bear");
+        btn.innerHTML = bearSvg(bearHex, translucent, scale);
+        btn.disabled = true;
+
+        const bearObj = Object.assign({}, combo, { el: btn, caught: false, x: xPct, y: yPct, speedMag: 0, heading: 0, dashBoostTime: 0 });
+        btn.addEventListener("click", () => catchBear(bearObj));
+
+        habitatStage.appendChild(btn);
+        aliveBears.push(bearObj);
+      });
+
+      startRoundBtn.textContent = "Start round " + (roundIndex+1);
+      startRoundBtn.hidden = false;
+      startRoundBtn.disabled = false;
+    }
+
+    function speedFor(bear){
+      if (cfg.movementMode === "byTrait" && hasSpeedDim) return SPEED_VALUES[bear.speed];
+      if (cfg.movementMode === "uniform") return cfg.uniformSpeed;
+      return 0;
+    }
+
+    // gentle random heading drift each frame, so paths curve and wander instead
+    // of bouncing in perfectly straight lines
+    const TURN_RATE = 2.4;
+
+    function initMotion(bear){
+      const baseSpeed = speedFor(bear);
+      if (baseSpeed <= 0){ bear.speedMag = 0; bear.heading = 0; return; }
+      // each bear gets its own pace and starting direction, so identical-type
+      // bears still move differently from one another
+      bear.speedMag = baseSpeed * (0.8 + Math.random()*0.4);
+      bear.heading = Math.random() * Math.PI * 2;
+      bear.dashBoostTime = 0;
+    }
+
+    function animateStage(timestamp){
+      if (!roundActive) return;
+      if (lastFrameTime === null) lastFrameTime = timestamp;
+      const dt = Math.min(0.05, (timestamp - lastFrameTime)/1000);
+      lastFrameTime = timestamp;
+
+      aliveBears.forEach(bear => {
+        if (bear.caught) return;
+        if (!bear.speedMag) return;
+
+        bear.heading += (Math.random()*2 - 1) * TURN_RATE * dt;
+
+        let speedMultiplier = 1;
+        if (bear.dashBoostTime > 0){
+          speedMultiplier = 1.8;
+          bear.dashBoostTime -= dt;
+        }
+
+        const vx = Math.cos(bear.heading) * bear.speedMag * speedMultiplier;
+        const vy = Math.sin(bear.heading) * bear.speedMag * 0.55 * speedMultiplier;
+        let x = bear.x + vx*dt;
+        let y = bear.y + vy*dt;
+
+        if (x < 4){ x = 4; bear.heading = Math.PI - bear.heading; }
+        if (x > 96){ x = 96; bear.heading = Math.PI - bear.heading; }
+        if (y < 6){ y = 6; bear.heading = -bear.heading; }
+        if (y > 94){ y = 94; bear.heading = -bear.heading; }
+
+        bear.x = x; bear.y = y;
+        bear.el.style.left = x + "%";
+        bear.el.style.top = y + "%";
+      });
+
+      rafId = requestAnimationFrame(animateStage);
+    }
+
+    startRoundBtn.addEventListener("click", beginRound);
+
+    function beginRound(){
+      startRoundBtn.hidden = true;
+      roundActive = true;
+      habitatStage.classList.add("round-active");
+      aliveBears.forEach(b => { if (!b.caught){ b.el.disabled = false; initMotion(b); } });
+      lastFrameTime = null;
+      rafId = requestAnimationFrame(animateStage);
+
+      const dur = ROUND_SECONDS[roundIndex];
+      timerFill.style.transition = "none";
+      timerFill.style.width = "100%";
+      requestAnimationFrame(() => {
+        timerFill.style.transition = "width " + dur + "s linear";
+        timerFill.style.width = "0%";
+      });
+
+      timerHandle = setTimeout(endRound, dur*1000);
+    }
+
+    function triggerEvade(bear){
+      bear.heading = Math.random() * Math.PI * 2;
+      bear.dashBoostTime = 0.35;
+      bear.el.classList.remove("evading");
+      // force reflow so the animation restarts if it's already mid-flight
+      void bear.el.offsetWidth;
+      bear.el.classList.add("evading");
+      setTimeout(() => bear.el.classList.remove("evading"), 300);
+    }
+
+    function catchBear(bear){
+      if (!roundActive || bear.caught) return;
+      if (cfg.evadeChance && Math.random() < cfg.evadeChance){
+        triggerEvade(bear);
+        return;
+      }
+      bear.caught = true;
+      caughtThisRound++;
+      caughtValue.textContent = String(caughtThisRound);
+      traitDims.forEach(dim => {
+        const tallyEl = document.getElementById("tally-" + idPrefix + "-" + dim.key + "-" + bear[dim.key]);
+        if (tallyEl) tallyEl.textContent = String(parseInt(tallyEl.textContent,10) - 1);
+      });
+      bear.el.classList.add("caught");
+      bear.el.disabled = true;
+      setTimeout(() => { if (bear.el.parentNode) bear.el.parentNode.removeChild(bear.el); }, 300);
+    }
+
+    function endRound(){
+      if (timerHandle){ clearTimeout(timerHandle); timerHandle = null; }
+      if (rafId){ cancelAnimationFrame(rafId); rafId = null; }
+      lastFrameTime = null;
+      roundActive = false;
+      habitatStage.classList.remove("round-active");
+      aliveBears.forEach(b => { b.el.disabled = true; });
+
+      const survivorCounts = {};
+      Object.keys(population).forEach(k => survivorCounts[k] = 0);
+      aliveBears.forEach(b => { if (!b.caught) survivorCounts[b.__key]++; });
+
+      const nextPop = {};
+      Object.keys(population).forEach(k => nextPop[k] = Math.round(survivorCounts[k]*REPRODUCTION_RATE));
+
+      population = nextPop;
+      generation++;
+      roundIndex++;
+      history.push(Object.assign({}, population));
+
+      if (roundIndex < NUM_ROUNDS){
+        setTimeout(() => { updateHud(); spawnBears(); }, 500);
+      } else {
+        setTimeout(showResults, 500);
+      }
+    }
+
+    function showResults(){
+      stageSection.hidden = true;
+      resultsSection.hidden = false;
+      revealLabLogIfNeeded();
+
+      resultsBody.innerHTML = "";
+      const hypDiv = document.createElement("div");
+      hypDiv.className = "conclusion";
+      hypDiv.innerHTML = "<strong>Your hypothesis:</strong> " + escapeHtml(hypothesis);
+      resultsBody.appendChild(hypDiv);
+
+      traitDims.forEach(dim => {
+        const margHist = history.map(snap => marginalOf(snap, traitDims, dim));
+
+        const wrap = document.createElement("div");
+        wrap.style.marginTop = "28px";
+        const h3 = document.createElement("h2");
+        h3.textContent = dim.resultsTitle;
+        wrap.appendChild(h3);
+
+        const canvas = document.createElement("canvas");
+        canvas.className = "chart-canvas";
+        canvas.width = 800; canvas.height = 320;
+        wrap.appendChild(canvas);
+
+        const table = document.createElement("table");
+        table.className = "freq-table";
+        wrap.appendChild(table);
+
+        const concl = document.createElement("div");
+        concl.className = "conclusion";
+        wrap.appendChild(concl);
+
+        resultsBody.appendChild(wrap);
+
+        drawChartGeneric(canvas, margHist, dim.cats, dim.chartHex);
+        renderFreqTableGeneric(table, margHist, dim.cats, dim.labels, dim.chartHex, dim.traitHeader);
+        concl.textContent = buildConclusionText(margHist, dim.cats, dim.labels, currentEnvName(), dim.noun, START_TOTAL);
+      });
+
+      tryAnotherBtn.disabled = true;
+      renderTrialQuiz(resultsBody, traitDims, history, () => { tryAnotherBtn.disabled = false; });
+
+      addLogEntry(cfg.kindLabel, currentEnvName(), hypothesis, history, traitDims);
+      renderLog();
+
+      resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    tryAnotherBtn.addEventListener("click", () => {
+      resultsSection.hidden = true;
+      setupSection.hidden = false;
+      if (cfg.useHabitatPicker){
+        selectedHabitat = null;
+        envPickerContainer.querySelectorAll(".habitat-btn").forEach(b => {
+          b.classList.remove("selected");
+          b.setAttribute("aria-pressed", "false");
+        });
+        if (selectedNoteEl) selectedNoteEl.textContent = "No habitat selected yet — click one of the cards above.";
+      }
+      hypothesis = "";
+      hypothesisInput.value = "";
+      checkReleaseReady();
+      setupSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  // ================= instantiate the four parts =================
+
+  createChallenge({
+    idPrefix: "1",
+    traitDims: [COLOR_DIM],
+    useHabitatPicker: true,
+    habitats: HABITATS,
+    habitatHint: "Each habitat hides one bear colour and exposes another. Watch how that changes what you can catch.",
+    movementMode: "uniform",
+    uniformSpeed: UNIFORM_SLOW_SPEED,
+    kindLabel: "Camouflage"
+  });
+
+  createChallenge({
+    idPrefix: "2",
+    traitDims: [SPEED_DIM],
+    useHabitatPicker: false,
+    fixedEnv: { name: "Open meadow", bgClass: "bg-meadow", desc: "Clear ground, nowhere to hide. The only defence is movement." },
+    movementMode: "byTrait",
+    evadeChance: 0.5,
+    kindLabel: "Speed"
+  });
+
+  createChallenge({
+    idPrefix: "3",
+    traitDims: [SIZE_DIM],
+    useHabitatPicker: false,
+    fixedEnv: { name: "Open field", bgClass: "bg-field", desc: "Flat and exposed. Every bear drifts at the same gentle pace — size decides how easy it is to grab." },
+    movementMode: "uniform",
+    uniformSpeed: UNIFORM_SLOW_SPEED,
+    kindLabel: "Size"
+  });
+
+  createChallenge({
+    idPrefix: "4",
+    traitDims: [COLOR_DIM, SPEED_DIM, SIZE_DIM],
+    useHabitatPicker: true,
+    habitats: HABITATS,
+    habitatHint: "Colour, speed, and size all matter here. Choose a habitat to set the camouflage pressure.",
+    movementMode: "byTrait",
+    kindLabel: "Combined"
+  });
+
+})();
+</script>
+</body>
+</html>
